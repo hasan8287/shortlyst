@@ -8,4 +8,5 @@ type Items struct {
 	Name     string             `json:"name" bson:"name" validate:"required"`
 	Price    int64              `json:"price" bson:"price" validate:"required"`
 	Stock    int                `json:"stock" bson:"stock"`
+	Status   int                `json:"status" bson:"status"` // 1: active, 0 : nonactive
 }
