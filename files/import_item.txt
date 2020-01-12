@@ -1,0 +1,5 @@
+Name|Price|Stock
+cocacola|20|10
+drink|100|10
+tea|50|2
+orange juice|60|7

@@ -6,6 +6,7 @@ import (
 	"shortlyst/pkg/repo"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -22,19 +23,31 @@ type repoSaldoImpl struct {
 
 //NewSaldoRepo new instance of SaldoRepo using mongodb
 func NewSaldoRepo(db *mongo.Database) repo.SaldoRepo {
-	return repoSaldoImpl{db: db, item: db.Collection(sadloCollection)}
+	return &repoSaldoImpl{db: db, saldo: db.Collection(sadloCollection)}
 }
 
-func (repo *repoSaldoImpl) Get(ctx context.Context, value int) (model.Items, error) {
+func (repo *repoSaldoImpl) Get(ctx context.Context, value int) (model.Saldo, error) {
 
-	item := model.Items{}
-	err = repo.item.FindOne(ctx, bson.M{"value": value}).Decode(&item)
+	item := model.Saldo{}
+	err := repo.saldo.FindOne(ctx, bson.M{"value": value}).Decode(&item)
 
 	return item, err
 }
 
-// UpSert : update or insert saldo by value
-func (repo *repoSaldoImpl) UpSert(ctx context.Context, data model.Saldo) (model.Saldo, error) {
+// Add create data Item
+func (repo *repoSaldoImpl) Add(ctx context.Context, data model.Saldo) (model.Saldo, error) {
+	res, err := repo.saldo.InsertOne(ctx, data)
+	if err != nil {
+		return model.Saldo{}, err
+	}
+
+	data.ObjectID = res.InsertedID.(primitive.ObjectID)
+
+	return data, nil
+}
+
+// Update : update  saldo by value
+func (repo *repoSaldoImpl) Update(ctx context.Context, data model.Saldo) (model.Saldo, error) {
 	update := bson.D{
 		{
 			Key:   "$set",
@@ -42,13 +55,11 @@ func (repo *repoSaldoImpl) UpSert(ctx context.Context, data model.Saldo) (model.
 		},
 	}
 
-	upsert := options.Update().SetUpsert(true)
 	_, err := repo.saldo.UpdateOne(ctx,
 		bson.M{
 			"value": data.Value,
 		},
-		update,
-		upsert)
+		update)
 
 	if err != nil {
 		return data, err
@@ -58,9 +69,7 @@ func (repo *repoSaldoImpl) UpSert(ctx context.Context, data model.Saldo) (model.
 }
 
 // Find data saldo
-func (repo *repoSaldoImpl) Find(ctx context.Context, params map[string]interface{}, page, size int) ([]model.Saldo, int, error) {
-	skip := int64((page - 1) * size)
-	limit := int64(size)
+func (repo *repoSaldoImpl) Find(ctx context.Context, params map[string]interface{}) ([]model.Saldo, int, error) {
 
 	total, err := repo.saldo.CountDocuments(ctx, params)
 
@@ -69,13 +78,9 @@ func (repo *repoSaldoImpl) Find(ctx context.Context, params map[string]interface
 	}
 
 	opts := options.FindOptions{Sort: bson.M{
-		"create_at": -1,
+		"value": -1,
 	}}
 
-	if skip > 0 && limit > 0 {
-		opts.Skip = &skip
-		opts.Limit = &limit
-	}
 	res, err := repo.saldo.Find(
 		ctx,
 		params,

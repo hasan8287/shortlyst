@@ -35,7 +35,7 @@ var _ ItemRepo = &ItemRepoMock{}
 //             GetFunc: func(ctx context.Context, id string) (model.Items, error) {
 // 	               panic("mock out the Get method")
 //             },
-//             UpdateFunc: func(ctx context.Context, id string, data model.Items) (model.Items, error) {
+//             UpdateFunc: func(ctx context.Context, data model.Items) (model.Items, error) {
 // 	               panic("mock out the Update method")
 //             },
 //         }
@@ -55,7 +55,7 @@ type ItemRepoMock struct {
 	GetFunc func(ctx context.Context, id string) (model.Items, error)
 
 	// UpdateFunc mocks the Update method.
-	UpdateFunc func(ctx context.Context, id string, data model.Items) (model.Items, error)
+	UpdateFunc func(ctx context.Context, data model.Items) (model.Items, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -88,8 +88,6 @@ type ItemRepoMock struct {
 		Update []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ID is the id argument value.
-			ID string
 			// Data is the data argument value.
 			Data model.Items
 		}
@@ -210,23 +208,21 @@ func (mock *ItemRepoMock) GetCalls() []struct {
 }
 
 // Update calls UpdateFunc.
-func (mock *ItemRepoMock) Update(ctx context.Context, id string, data model.Items) (model.Items, error) {
+func (mock *ItemRepoMock) Update(ctx context.Context, data model.Items) (model.Items, error) {
 	if mock.UpdateFunc == nil {
 		panic("ItemRepoMock.UpdateFunc: method is nil but ItemRepo.Update was just called")
 	}
 	callInfo := struct {
 		Ctx  context.Context
-		ID   string
 		Data model.Items
 	}{
 		Ctx:  ctx,
-		ID:   id,
 		Data: data,
 	}
 	lockItemRepoMockUpdate.Lock()
 	mock.calls.Update = append(mock.calls.Update, callInfo)
 	lockItemRepoMockUpdate.Unlock()
-	return mock.UpdateFunc(ctx, id, data)
+	return mock.UpdateFunc(ctx, data)
 }
 
 // UpdateCalls gets all the calls that were made to Update.
@@ -234,12 +230,10 @@ func (mock *ItemRepoMock) Update(ctx context.Context, id string, data model.Item
 //     len(mockedItemRepo.UpdateCalls())
 func (mock *ItemRepoMock) UpdateCalls() []struct {
 	Ctx  context.Context
-	ID   string
 	Data model.Items
 } {
 	var calls []struct {
 		Ctx  context.Context
-		ID   string
 		Data model.Items
 	}
 	lockItemRepoMockUpdate.RLock()

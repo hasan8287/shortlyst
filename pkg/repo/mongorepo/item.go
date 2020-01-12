@@ -23,7 +23,7 @@ type repoItemImpl struct {
 
 //NewItemRepo new instance of ItemRepo using mongodb
 func NewItemRepo(db *mongo.Database) repo.ItemRepo {
-	return repoItemImpl{db: db, item: db.Collection(itemCollection)}
+	return &repoItemImpl{db: db, item: db.Collection(itemCollection)}
 }
 
 func (repo *repoItemImpl) Get(ctx context.Context, id string) (model.Items, error) {

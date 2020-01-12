@@ -10,9 +10,10 @@ import (
 )
 
 var (
+	lockSaldoRepoMockAdd    sync.RWMutex
 	lockSaldoRepoMockFind   sync.RWMutex
 	lockSaldoRepoMockGet    sync.RWMutex
-	lockSaldoRepoMockUpSert sync.RWMutex
+	lockSaldoRepoMockUpdate sync.RWMutex
 )
 
 // Ensure, that SaldoRepoMock does implement SaldoRepo.
@@ -25,14 +26,17 @@ var _ SaldoRepo = &SaldoRepoMock{}
 //
 //         // make and configure a mocked SaldoRepo
 //         mockedSaldoRepo := &SaldoRepoMock{
-//             FindFunc: func(ctx context.Context, params map[string]interface{}, page int, size int) ([]model.Saldo, int, error) {
+//             AddFunc: func(ctx context.Context, data model.Saldo) (model.Saldo, error) {
+// 	               panic("mock out the Add method")
+//             },
+//             FindFunc: func(ctx context.Context, params map[string]interface{}) ([]model.Saldo, int, error) {
 // 	               panic("mock out the Find method")
 //             },
 //             GetFunc: func(ctx context.Context, value int) (model.Saldo, error) {
 // 	               panic("mock out the Get method")
 //             },
-//             UpSertFunc: func(ctx context.Context, id string, data model.Saldo) (model.Saldo, error) {
-// 	               panic("mock out the UpSert method")
+//             UpdateFunc: func(ctx context.Context, data model.Saldo) (model.Saldo, error) {
+// 	               panic("mock out the Update method")
 //             },
 //         }
 //
@@ -41,27 +45,33 @@ var _ SaldoRepo = &SaldoRepoMock{}
 //
 //     }
 type SaldoRepoMock struct {
+	// AddFunc mocks the Add method.
+	AddFunc func(ctx context.Context, data model.Saldo) (model.Saldo, error)
+
 	// FindFunc mocks the Find method.
-	FindFunc func(ctx context.Context, params map[string]interface{}, page int, size int) ([]model.Saldo, int, error)
+	FindFunc func(ctx context.Context, params map[string]interface{}) ([]model.Saldo, int, error)
 
 	// GetFunc mocks the Get method.
 	GetFunc func(ctx context.Context, value int) (model.Saldo, error)
 
-	// UpSertFunc mocks the UpSert method.
-	UpSertFunc func(ctx context.Context, id string, data model.Saldo) (model.Saldo, error)
+	// UpdateFunc mocks the Update method.
+	UpdateFunc func(ctx context.Context, data model.Saldo) (model.Saldo, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// Add holds details about calls to the Add method.
+		Add []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Data is the data argument value.
+			Data model.Saldo
+		}
 		// Find holds details about calls to the Find method.
 		Find []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Params is the params argument value.
 			Params map[string]interface{}
-			// Page is the page argument value.
-			Page int
-			// Size is the size argument value.
-			Size int
 		}
 		// Get holds details about calls to the Get method.
 		Get []struct {
@@ -70,38 +80,67 @@ type SaldoRepoMock struct {
 			// Value is the value argument value.
 			Value int
 		}
-		// UpSert holds details about calls to the UpSert method.
-		UpSert []struct {
+		// Update holds details about calls to the Update method.
+		Update []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ID is the id argument value.
-			ID string
 			// Data is the data argument value.
 			Data model.Saldo
 		}
 	}
 }
 
+// Add calls AddFunc.
+func (mock *SaldoRepoMock) Add(ctx context.Context, data model.Saldo) (model.Saldo, error) {
+	if mock.AddFunc == nil {
+		panic("SaldoRepoMock.AddFunc: method is nil but SaldoRepo.Add was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Data model.Saldo
+	}{
+		Ctx:  ctx,
+		Data: data,
+	}
+	lockSaldoRepoMockAdd.Lock()
+	mock.calls.Add = append(mock.calls.Add, callInfo)
+	lockSaldoRepoMockAdd.Unlock()
+	return mock.AddFunc(ctx, data)
+}
+
+// AddCalls gets all the calls that were made to Add.
+// Check the length with:
+//     len(mockedSaldoRepo.AddCalls())
+func (mock *SaldoRepoMock) AddCalls() []struct {
+	Ctx  context.Context
+	Data model.Saldo
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Data model.Saldo
+	}
+	lockSaldoRepoMockAdd.RLock()
+	calls = mock.calls.Add
+	lockSaldoRepoMockAdd.RUnlock()
+	return calls
+}
+
 // Find calls FindFunc.
-func (mock *SaldoRepoMock) Find(ctx context.Context, params map[string]interface{}, page int, size int) ([]model.Saldo, int, error) {
+func (mock *SaldoRepoMock) Find(ctx context.Context, params map[string]interface{}) ([]model.Saldo, int, error) {
 	if mock.FindFunc == nil {
 		panic("SaldoRepoMock.FindFunc: method is nil but SaldoRepo.Find was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
 		Params map[string]interface{}
-		Page   int
-		Size   int
 	}{
 		Ctx:    ctx,
 		Params: params,
-		Page:   page,
-		Size:   size,
 	}
 	lockSaldoRepoMockFind.Lock()
 	mock.calls.Find = append(mock.calls.Find, callInfo)
 	lockSaldoRepoMockFind.Unlock()
-	return mock.FindFunc(ctx, params, page, size)
+	return mock.FindFunc(ctx, params)
 }
 
 // FindCalls gets all the calls that were made to Find.
@@ -110,14 +149,10 @@ func (mock *SaldoRepoMock) Find(ctx context.Context, params map[string]interface
 func (mock *SaldoRepoMock) FindCalls() []struct {
 	Ctx    context.Context
 	Params map[string]interface{}
-	Page   int
-	Size   int
 } {
 	var calls []struct {
 		Ctx    context.Context
 		Params map[string]interface{}
-		Page   int
-		Size   int
 	}
 	lockSaldoRepoMockFind.RLock()
 	calls = mock.calls.Find
@@ -160,41 +195,37 @@ func (mock *SaldoRepoMock) GetCalls() []struct {
 	return calls
 }
 
-// UpSert calls UpSertFunc.
-func (mock *SaldoRepoMock) UpSert(ctx context.Context, id string, data model.Saldo) (model.Saldo, error) {
-	if mock.UpSertFunc == nil {
-		panic("SaldoRepoMock.UpSertFunc: method is nil but SaldoRepo.UpSert was just called")
+// Update calls UpdateFunc.
+func (mock *SaldoRepoMock) Update(ctx context.Context, data model.Saldo) (model.Saldo, error) {
+	if mock.UpdateFunc == nil {
+		panic("SaldoRepoMock.UpdateFunc: method is nil but SaldoRepo.Update was just called")
 	}
 	callInfo := struct {
 		Ctx  context.Context
-		ID   string
 		Data model.Saldo
 	}{
 		Ctx:  ctx,
-		ID:   id,
 		Data: data,
 	}
-	lockSaldoRepoMockUpSert.Lock()
-	mock.calls.UpSert = append(mock.calls.UpSert, callInfo)
-	lockSaldoRepoMockUpSert.Unlock()
-	return mock.UpSertFunc(ctx, id, data)
+	lockSaldoRepoMockUpdate.Lock()
+	mock.calls.Update = append(mock.calls.Update, callInfo)
+	lockSaldoRepoMockUpdate.Unlock()
+	return mock.UpdateFunc(ctx, data)
 }
 
-// UpSertCalls gets all the calls that were made to UpSert.
+// UpdateCalls gets all the calls that were made to Update.
 // Check the length with:
-//     len(mockedSaldoRepo.UpSertCalls())
-func (mock *SaldoRepoMock) UpSertCalls() []struct {
+//     len(mockedSaldoRepo.UpdateCalls())
+func (mock *SaldoRepoMock) UpdateCalls() []struct {
 	Ctx  context.Context
-	ID   string
 	Data model.Saldo
 } {
 	var calls []struct {
 		Ctx  context.Context
-		ID   string
 		Data model.Saldo
 	}
-	lockSaldoRepoMockUpSert.RLock()
-	calls = mock.calls.UpSert
-	lockSaldoRepoMockUpSert.RUnlock()
+	lockSaldoRepoMockUpdate.RLock()
+	calls = mock.calls.Update
+	lockSaldoRepoMockUpdate.RUnlock()
 	return calls
 }
